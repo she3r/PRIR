@@ -22,7 +22,7 @@
 
 using namespace std;
 
-double rnd() { return random() % 1000000 / 1000000.0; }
+double rnd() { return rand() % 1000000 / 1000000.0; }
 
 void initialize_swarm(Swarm *swarm, Function *function, int robots) {
   int dims = function->dimensions();
@@ -31,7 +31,7 @@ void initialize_swarm(Swarm *swarm, Function *function, int robots) {
   for (int d = 0; d < dims; d++)
     size[d] = function->get_max_position()[d] - function->get_min_position()[d];
 
-  srandom(SEED);
+  srand(SEED);
 
   for (int robot = 0; robot < robots; robot++) {
     for (int d = 0; d < dims; d++)
