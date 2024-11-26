@@ -101,11 +101,11 @@ int main(int argc, char **argv) {
       max_distance / ANTENNA_MAX_RANGE_DIV, ANTENNA_RANGE_MODIFIER);
   Swarm *swarm = new SequentialSwarm(ROBOTS, antenna, function);
 
-  if (!rank) {
-    initialize_swarm(swarm, function, ROBOTS);
-  }
+  if (!rank)
+    initialize_swarm(swarm, function, ROBOTS);    // zainicjalizowany swarm tylko w parencie, trzeba inicjowac/przeslac
 
-  swarm->before_first_run();
+
+  swarm->before_first_run();  // przeslanie inicjalizacji do wszystkich pozostalych procesow
 
   int step = 0;
   do {
