@@ -12,5 +12,5 @@ constexpr int ROBOTS = 1500;
 constexpr double STEP_SIZE = 0.1;
 
 constexpr int STEPS = 2500;
-constexpr int REPORT_PERIOD = 100;
+constexpr int REPORT_PERIOD = 500;
 #endif

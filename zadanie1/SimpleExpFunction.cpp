@@ -1,6 +1,5 @@
 #include "SimpleExpFunction.h"
 #include "MathHelper.h"
-
 #include <iostream>
 #include <math.h>
 
@@ -22,15 +21,39 @@ double SimpleExpFunction::value(double *position) {
   return result;
 }
 
+template<typename T>
+class Allocator {
+public:
+    static T **alloc_2d_oneblock(int rows, int cols) {
+        T *data = static_cast<T *>(malloc(rows * cols * sizeof(T)));
+        T **array= static_cast<T **>(malloc(rows * sizeof(T *)));
+        for (int i=0; i<rows; i++)
+            array[i] = &(data[cols*i]);
+
+        return array;
+    }
+    // example send MPI_Send(&(A[0][0]), N*M, MPI_INT, destination, tag, MPI_COMM_WORLD);
+    static void dealloc(T **array) {
+        free(array[0]);
+        array[0]= nullptr;
+        free(array);
+        array= nullptr;
+    }
+};
+
+
+
 SimpleExpFunction::SimpleExpFunction(int dims, int exponents) : Function(dims) {
   this->exponents = exponents;
 
-  exp_location = new double *[exponents];
-  decay = new double[exponents];
-  ampl = new double[exponents];
-
-  for (int e = 0; e < exponents; e++)
-    exp_location[e] = new double[dims];
+//  exp_location = new double *[exponents];
+//  decay = new double[exponents];
+//  ampl = new double[exponents];
+//  for (int e = 0; e < exponents; e++)
+//    exp_location[e] = new double[dims];
+    exp_location = Allocator<double>::alloc_2d_oneblock(exponents,dims);
+    decay = (double*) malloc(sizeof(double)*exponents);
+    ampl = (double*) malloc(sizeof(double)*exponents);
 
   for (int d = 0; d < dims; d++) {
     min_position[d] = 0.0;

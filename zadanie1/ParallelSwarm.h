@@ -17,8 +17,8 @@ private:
     double *function_value;  // wartość funkcji
     int step;
 
-    double *_buffer;
-    double ** _buffer_positions;
+    //double *_buffer;
+    //double ** _buffer_positions;
 
     // From sequential
     int best_id;
@@ -62,5 +62,7 @@ public:
     void set_position( int dimension, int robot, double position ) override;
     double get_position( int robot, int dimension ) override;
     void allocate_memory() override;
+
+    bool IsLogStep() const;
 };
 #endif //PARALLELSWARM_H
