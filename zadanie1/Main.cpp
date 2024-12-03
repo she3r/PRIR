@@ -24,6 +24,8 @@
 #include <thread>
 #include <time.h>
 #include <unistd.h> // For sleep function
+#include <fstream>
+
 using namespace std;
 
 double rnd() { return rand() % 1000000 / 1000000.0; }
@@ -89,6 +91,24 @@ void show_report(int step, Swarm *swarm, int robots, int dims) {
     cout << endl;
   }
 }
+std::string timeToString(std::time_t time) {
+    std::tm* tm_ptr = std::localtime(&time);
+    char buffer[100];
+    if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d-%H-%M-%S", tm_ptr)) {
+        return std::string(buffer);
+    } else {
+        throw std::runtime_error("strftime failed");
+    }
+}
+
+string get_filename(int num_process, int rank){
+    // Get the current time as a time_t object
+    std::time_t now = std::time(nullptr);
+
+    // Convert the time_t object to a string
+    std::string timeStr = timeToString(now);
+    return (string) "output-p-" + std::to_string(num_process) + "r-" + std::to_string(rank) + "-" + timeStr + ".txt";
+}
 
 int main(int argc, char **argv) {
     clock_t startclock, endclock;
@@ -97,13 +117,26 @@ int main(int argc, char **argv) {
 
 #ifdef MPI_ON
   MPI_Init(&argc, &argv);
-  cout << "MPI version " << MPI_VERSION << endl;
+  //cout << "MPI version " << MPI_VERSION << endl;
   MPI_Comm_size(MPI_COMM_WORLD, &procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
     long timerstart;
-    if(!rank)
+    std::ofstream* outFile = nullptr;
+    std::streambuf* coutBuf = std::cout.rdbuf();
+    if(!rank) {
+        // Open a file in write mode.
+        outFile = new std::ofstream(get_filename(procs, rank));
+        // Check if the file is open
+        if (!outFile->is_open()) {
+            std::cerr << "Failed to open file for output." << std::endl;
+            return 1;
+        }
+        std::cout.rdbuf(outFile->rdbuf());
+        sleep(10);
+
         startclock = clock();
+    }
 
   Function *function = initialize_function();
   double max_distance = MathHelper::distance(function->get_max_position(),
@@ -120,20 +153,25 @@ int main(int argc, char **argv) {
 
 
   swarm->before_first_run();  // przeslanie inicjalizacji do wszystkich pozostalych procesow
-
   int step = 0;
   do {
     swarm->run(REPORT_PERIOD);
+    // todo: to nie musi juz byc allgatherv, tylko gatherv
     swarm->before_get_position();
     step += REPORT_PERIOD;
     if (!rank) {
-      show_report(step, swarm, ROBOTS, function->dimensions());
-        endclock = clock();
-        double duration = (double)(endclock - startclock) / CLOCKS_PER_SEC;
-        std::cout <<"Step: "<< step << " Execution time: " << duration << std::endl;
+          show_report(step, swarm, ROBOTS, function->dimensions());
+          endclock = clock();
     }
   } while (step < STEPS);
-
+    if(!rank) {
+        double duration = (double) (endclock - startclock) / CLOCKS_PER_SEC;
+        // Restore the original buffer to cout
+        std::cout.rdbuf(coutBuf);
+        // Close the file
+        outFile->close();
+        std::cout << "Step: " << step << " Execution time: " << duration << std::endl;
+    }
 #ifdef MPI_ON
   MPI_Finalize();
 #endif

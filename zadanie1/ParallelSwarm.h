@@ -47,7 +47,9 @@ private:
     int *_displacements;
     int* _displacements_positions;
 
-    //
+    // alternatywa do 2d
+    double *_position;
+    double *_new_position;
     ~ParallelSwarm();
 
     void find_neighbours_and_remember_best();

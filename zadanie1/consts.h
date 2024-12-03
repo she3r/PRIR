@@ -11,6 +11,6 @@ constexpr int TARGET_NEIGHBOURS = 10;
 constexpr int ROBOTS = 1500;
 constexpr double STEP_SIZE = 0.1;
 
-constexpr int STEPS = 2500;
+constexpr int STEPS = 1500;
 constexpr int REPORT_PERIOD = 500;
 #endif
