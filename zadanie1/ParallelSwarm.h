@@ -17,8 +17,8 @@ private:
     double *function_value;  // wartość funkcji
     int step;
 
-    double *_buffer;
-    double ** _buffer_positions;
+    //double *_buffer;
+    //double ** _buffer_positions;
 
     // From sequential
     int best_id;
@@ -32,8 +32,7 @@ private:
 
     void gather_positions();
 
-    void set_start();
-    void set_end();
+    void set_start_and_end();
     void init_sizes();
     void compare_with_other_robot(int robot, int other_robot);
     void init_displacements();
@@ -47,7 +46,9 @@ private:
     int *_displacements;
     int* _displacements_positions;
 
-    //
+    // alternatywa do 2d
+    double *_position;
+    double *_new_position;
     ~ParallelSwarm();
 
     void find_neighbours_and_remember_best();
@@ -62,5 +63,9 @@ public:
     void set_position( int dimension, int robot, double position ) override;
     double get_position( int robot, int dimension ) override;
     void allocate_memory() override;
+
+    bool IsLogStep() const;
+
+    void initialize_antennas();
 };
 #endif //PARALLELSWARM_H
