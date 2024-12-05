@@ -156,8 +156,8 @@ int main(int argc, char **argv) {
 
   swarm->before_first_run();  // przeslanie inicjalizacji do wszystkich pozostalych procesow
   int step = 0;
-  if(rank == 1 || rank == 0)
-    show_report(step, swarm, ROBOTS, function->dimensions());
+  // if(rank == 1 || rank == 0)
+  //   show_report(step, swarm, ROBOTS, function->dimensions());
   do {
 //      if(rank == 0 && step==0)
     swarm->run(REPORT_PERIOD);
