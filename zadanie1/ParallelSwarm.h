@@ -16,7 +16,7 @@ private:
     double *antenna_range_sq; // kwadrat zasięgu anteny
     double *function_value;  // wartość funkcji
     int step;
-
+    int* _i_times_dimensions;
     //double *_buffer;
     //double ** _buffer_positions;
 
@@ -55,6 +55,8 @@ private:
 
 public:
     ParallelSwarm( int robots, Antenna *antenna, Function *function  );
+
+    void init_helpers();
 
     void run( int steps ) override;
 

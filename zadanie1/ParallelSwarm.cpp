@@ -5,61 +5,54 @@
 #include "MathHelper.h"
 #include "Swarm.h"
 #include "consts.h"
-#include <iostream>
-
-// todo usunac naglowek
 #include <mpi.h>
-
 using namespace std;
 
 ParallelSwarm::ParallelSwarm(int robots, Antenna *antenna, Function *function) : Swarm(robots, antenna, function) {
     MPI_Comm_size(MPI_COMM_WORLD, &_procs);
     MPI_Comm_rank(MPI_COMM_WORLD, &_rank);
-    //cout<<"Constructor. procs="<<_procs<<" rank="<<_rank<<endl;
     _size = robots / _procs;
     _remainder = robots % _procs;
     _is_extended = _remainder && _remainder > _rank;
-    //cout<< "Constructor. size=" << _size <<" . Remainder=" << _remainder << ". IsExtended=" << _is_extended << endl;
-    allocate_memory();
+    // nie zmieniac ukladu
+    ulong size_of_displacements_and_sizes = _procs * sizeof(int);
+    _displacements = (int*) malloc(size_of_displacements_and_sizes);
+    _displacements_positions = (int*) malloc(size_of_displacements_and_sizes);
+    _sizes=(int*) malloc(size_of_displacements_and_sizes);
+    _sizes_positions = (int*) malloc(size_of_displacements_and_sizes);
     init_sizes();
     init_displacements();
     set_start_and_end();
+    //
+    init_helpers();
+    allocate_memory();
     initialize_antennas();
     this->step=0;
 }
 
-ParallelSwarm::~ParallelSwarm() {
-    //cout << "destructor start" <<endl;
-    //delete[] neighbour_id;
-    free(neighbour_id);
-    neighbour_id= nullptr;
-    //cout << "destructor neighbour_id" <<endl;
-    //delete[] nearest_neighbours;
-    free(nearest_neighbours);
-    nearest_neighbours= nullptr;
-    //cout << "destructor nearest_neighbours" <<endl;
-    //delete[] function_value;
-    free(function_value);
-    function_value= nullptr;
-    //cout << "destructor function_value" <<endl;
-    //delete[] antenna_range_sq;
-    free(antenna_range_sq);
-    //antenna_range_sq= nullptr;
-    //cout << "destructor antenna_range_sq" <<endl;
-    //Allocator<double>::dealloc(position);
-    free(_position);
-    //cout << "destructor position" <<endl;
-    //Allocator<double>::dealloc(new_position);
-    free(_new_position);
-    //cout << "destructor new_position" <<endl;
+void ParallelSwarm::init_helpers() {
+    _i_times_dimensions = (int*) malloc(sizeof(int) * (_end - _start));
+    _i_times_dimensions[0] = _start * dimensions;
+    for(int i=1;i<_end - _start;++i)
+        _i_times_dimensions[i] = _i_times_dimensions[i-1] + dimensions;
+}
 
+ParallelSwarm::~ParallelSwarm() {
+    free(neighbour_id);
+    free(nearest_neighbours);
+    free(function_value);
+    free(antenna_range_sq);
+    free(_position);
+    free(_new_position);
     // displacements
-    //cout << "descructor displacements" << endl;
     free(_displacements);
     free(_displacements_positions);
     // sizes
     free(_sizes);
     free(_sizes_positions);
+
+    //helpers
+    free(_i_times_dimensions);
 }
 
 void ParallelSwarm::find_neighbours_and_remember_best() {
@@ -68,8 +61,8 @@ void ParallelSwarm::find_neighbours_and_remember_best() {
         nearest_neighbours[robot] = 0;
 
         best_function_value = function_value[robot];
-        my_antenna_range_sq = antenna_range_sq[robot];
-        my_position = &(_position[robot * dimensions]);
+        my_antenna_range_sq = antenna_range_sq[robot-_start];
+        my_position = &(_position[_i_times_dimensions[robot-_start]]);
 
         for (int other_robot = 0; other_robot < robot; other_robot++)
             compare_with_other_robot(robot, other_robot);
@@ -91,18 +84,13 @@ void ParallelSwarm::allocate_memory() {
 
     ulong size_of_double_arrays = robots * sizeof(double);
     function_value = (double*) malloc(size_of_double_arrays);
-    antenna_range_sq = (double*) malloc(size_of_double_arrays);
+    antenna_range_sq = (double*) malloc((_end-_start)*sizeof(double));
 
-    ulong size_of_displacements_and_sizes = _procs * sizeof(int);
-    _displacements = (int*) malloc(size_of_displacements_and_sizes);
-    _displacements_positions = (int*) malloc(size_of_displacements_and_sizes);
-    _sizes=(int*) malloc(size_of_displacements_and_sizes);
-    _sizes_positions = (int*) malloc(size_of_displacements_and_sizes);
 }
 void ParallelSwarm::initialize_antennas() {
     double vSQ = antenna->initial_range();
     vSQ *= vSQ;
-    for (int r = _start; r < _end; r++)
+    for (int r = 0; r < _end-_start; r++)
         antenna_range_sq[r] = vSQ;
 }
 
@@ -113,45 +101,22 @@ void ParallelSwarm::init_displacements() {
         _displacements[i] = _displacements[i-1] + _sizes[i-1];
         _displacements_positions[i] = _displacements_positions[i-1] + _sizes[i-1] * dimensions;
     }
-    if(!_rank) {
-        cout << "displacements: " << endl;
-        for (int i = 0; i < _procs; ++i) {
-            cout << _displacements[i] << " ";
-        }
-        cout << endl;
-        cout << "_displacements_positions: " << endl;
-        for (int i = 0; i < _procs; ++i) {
-            cout << _displacements_positions[i] << " ";
-        }
-        cout << endl;
-    }
 }
 
 
 void ParallelSwarm::move() {
-    for (int robot = _start; robot < _end; robot++)
-        MathHelper::move(&(_position[robot * dimensions]),&(_position[neighbour_id[robot] * dimensions]),
-                         &(_new_position[ robot * dimensions]), dimensions, STEP_SIZE / sqrt(step));
+    for (int robot = 0; robot < _end - _start; robot++)
+        MathHelper::move(&(_position[_i_times_dimensions[robot]]),&(_position[neighbour_id[robot + _start] * dimensions]),
+                         &(_new_position[_i_times_dimensions[robot]]), dimensions, STEP_SIZE / sqrt(step));
 
-    for (int robot = _start; robot < _end; robot++)
+    for (int robot = 0; robot < _end-_start; robot++)
         for (int d = 0; d < dimensions; d++)
-            _position[robot * dimensions + d] = _new_position[robot * dimensions + d];
-//    int search = 31;
-//    if(search >= _start && search < _end){
-//        cout << "rank: " << _rank << " neighbour id: " << neighbour_id[search] << " ";
-//        cout<< "step: " << step << ". newposition " << search << ": " << _new_position[search * dimensions + 0]
-//        << ","<<_new_position[search * dimensions + 1]
-//        << ","<< _new_position[search * dimensions + 2] << endl;
-//        cout<< "step: " << step << ". _position " << search << ": " << _position[search * dimensions + 0]
-//            << ","<<_position[search * dimensions + 1]
-//            << ","<< _position[search * dimensions + 2] << endl;
-//    }
+            _position[_i_times_dimensions[robot] + d] = _new_position[_i_times_dimensions[robot] + d];
 }
 
 void ParallelSwarm::set_start_and_end() {
     _start = _displacements[_rank];
     _end = _displacements[_rank] + _sizes[_rank];
-    cout << "rank: " << _rank << " start: " << _start << " end: " << _end << endl;
 }
 
 void ParallelSwarm::init_sizes() {
@@ -159,26 +124,16 @@ void ParallelSwarm::init_sizes() {
         _sizes[i] = _size;
         if(_remainder && i < _remainder)
             _sizes[i] += 1;
-        _sizes_positions[i] = _sizes[i]*dimensions;
-    }
-    if(!_rank) {
-        cout << "sizes: " << endl;
-        for (int i = 0; i < _procs; ++i)
-            cout << _sizes[i] << " ";
-        cout << endl << "sizes_positions: " << endl;
-        for (int i = 0; i < _procs; ++i)
-            cout << _sizes_positions[i] << " ";
-        cout << endl;
+
+        _sizes_positions[i] = _sizes[i] * dimensions;
     }
 }
 
 void ParallelSwarm::compare_with_other_robot(int robot, int other_robot) {
     if (MathHelper::distanceSQ(my_position, &(_position[other_robot * dimensions]), dimensions) < my_antenna_range_sq) {
-        // inny robot jest w zasięgu anteny
         nearest_neighbours[robot]++;
 
         if (best_function_value < function_value[other_robot]) {
-            // w dodatku ma lepszą wartość funkcji
             best_function_value = function_value[other_robot];
             best_id = other_robot;
         }
@@ -186,9 +141,8 @@ void ParallelSwarm::compare_with_other_robot(int robot, int other_robot) {
 }
 
 void ParallelSwarm::evaluate_function() {
-    for (int robot = _start; robot < _end; robot++) {
-        function_value[robot] = function->value(&(_position[robot * dimensions]));
-    }
+    for (int robot = 0; robot < (_end-_start); robot++)
+        function_value[robot + _start] = function->value(&(_position[_i_times_dimensions[robot]]));
 }
 
 void ParallelSwarm::gather_function_values() {
@@ -214,32 +168,34 @@ void ParallelSwarm::run(int steps) {
 }
 
 void ParallelSwarm::fit_antenna_range() {
-    for (int robot = _start; robot < _end; robot++) {
+    for (int robot = 0; robot < _end-_start; robot++) {
         double range = antenna->range(sqrt(antenna_range_sq[robot]),
-                                      nearest_neighbours[robot]);
+                                      nearest_neighbours[robot + _start]);
         antenna_range_sq[robot] = range * range;
     }
 }
+
 void ParallelSwarm::before_first_run() {
+    uint robots_dimensions = robots * dimensions;
     if(!_rank)
-        MPI_Bcast(_position, robots*dimensions, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(_position,  robots_dimensions, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     else{
-        double *position_buffer = (double*) malloc(sizeof(double) * robots * dimensions);
-        MPI_Bcast(position_buffer, robots*dimensions, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        // todo experimental
+        double *position_buffer = (double*) malloc(sizeof(double) * robots_dimensions);
+        MPI_Bcast(position_buffer, robots_dimensions, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         free(_position);
         _position=position_buffer;
     }
 }
+
 void ParallelSwarm::before_get_position() {
     gather_positions();
 }
+
 void ParallelSwarm::set_position( int dimension, int robot, double position ) {
-    //this->position[robot][dimension] = position;
     this->_position[robot * dimensions + dimension] = position;
 }
+
 double ParallelSwarm::get_position( int robot, int dimension )  {
-    //return position[robot][dimension];
     return this->_position[robot * dimensions + dimension];
 }
 
