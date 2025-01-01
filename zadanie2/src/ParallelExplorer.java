@@ -19,6 +19,10 @@ class LockingTable2D{
         rows = table2d.rows();
         cols = table2d.cols();
         locks = new Object[rows][cols];
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                locks[i][j] = new Object();
+
         acquiredTable = new Integer[rows][cols];
     }
 
