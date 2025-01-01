@@ -32,6 +32,7 @@
 *.app
 /zadanie1/cmake-build-debug
 /zadanie1/.idea
+/zadanie2/.idea
 zadanie1/CMakeLists.txt
 /MPI_samples
 /zadanie1/testy
