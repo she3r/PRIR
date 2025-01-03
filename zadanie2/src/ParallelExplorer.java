@@ -160,7 +160,6 @@ public class ParallelExplorer implements Explorer{
                             throw new IllegalArgumentException("zły format wpisu terminalnego - niejednoznaczny numer watku");
                         if(SetThreadAsDoneAndCheckIfAllDone(threadNum.col()))
                             isDone=true;
-                        else continue;
                     }
                     else {
                         // zeruj na tablicy wejsciowej. Dodaj do zbioru wynikowego

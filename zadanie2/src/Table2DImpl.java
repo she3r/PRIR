@@ -40,12 +40,14 @@ public class Table2DImpl implements Table2D {
                 System.out.print(value + "\t");
             }
             System.out.println();
+            System.out.println();
         }
     }
 
     public void AssertLegalUsage() throws Exception {
         for(int i = 0; i < usageTable.length; i++) {
             for (int j = 0; j < table[0].length; j++) {
+                // szukamy 2=1+1 wiec wszystkie jedynki sie wyzeruja
                 if(table[i][j] == 1){
                     throw new Exception(String.format("brak zera w tablicy. Wartosc=%d. Row=%d, Col=%d", usageTable[i][j], i, j));
                 }
