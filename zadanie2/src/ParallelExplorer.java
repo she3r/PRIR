@@ -27,7 +27,7 @@ class LockingTable2D{
     }
 
     public Tuple<Integer, Boolean> AcquireValue(int row, int column){
-        if(row >= rows || column >= cols){
+        if(row < 0 || row >= rows || column < 0 ||column >= cols){
             return null;
         }
         synchronized(locks[row][column]){
@@ -62,6 +62,12 @@ public class ParallelExplorer implements Explorer{
         this.factory = factory;
         allReadThreads = new ThreadAndPosition[factory.readersThreads()];
         isThreadDone = new boolean[factory.readersThreads()];
+        for(int i=0;i< factory.readersThreads();++i){
+            var producer = GetProducer(i);
+            allReadThreads[i] = this.factory.readerThread(producer);
+        }
+        var consumer = GetConsumer();
+        writerThread = this.factory.writterThread(consumer);
     }
 
     private Runnable GetProducer(int threadId){
@@ -117,6 +123,7 @@ public class ParallelExplorer implements Explorer{
                             throw new IllegalArgumentException("zły format wpisu terminalnego - niejednoznaczny numer watku");
                         if(SetThreadAsDoneAndCheckIfAllDone(threadNum.col()))
                             break;
+                        else continue;
                     }
                     // zeruj na tablicy wejsciowej. Dodaj do zbioru wynikowego
                     originalTable.set0(item.first());
@@ -134,12 +141,6 @@ public class ParallelExplorer implements Explorer{
     public void setTable(Table2D table) {
         originalTable = table;
         toZeroWriteQueue  = new ArrayBlockingQueue<>(originalTable.cols() * originalTable.rows(), true);
-        for(int i=0;i< factory.readersThreads();++i){
-            var producer = GetProducer(i);
-            allReadThreads[i] = factory.readerThread(producer);
-        }
-        var consumer = GetConsumer();
-        writerThread = factory.writterThread(consumer);
         this.workingTable = new LockingTable2D(table);
     }
 
