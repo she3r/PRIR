@@ -30,7 +30,7 @@ public class ExtendedLoggingThreadsFactory implements ThreadsFactory {
         if (index >= totalReaders) {  
             return null;  
         }  
-        Thread thread = new LoggingThread(run,index);
+        Thread thread = new LoggingThread(run,index,true);
         return new ThreadAndPosition(thread, threadStartingPositions[index]);
     }  
   
@@ -39,7 +39,7 @@ public class ExtendedLoggingThreadsFactory implements ThreadsFactory {
         int index = Integer.MAX_VALUE;
         synchronized (writerLock) {  
             if (writerThread == null) {  
-                writerThread = new LoggingThread(run,index);
+                writerThread = new LoggingThread(run,index,false);
             }  
             return writerThread;  
         }  
@@ -47,25 +47,36 @@ public class ExtendedLoggingThreadsFactory implements ThreadsFactory {
   
     private static class LoggingThread extends Thread {
         private final int index;
+        private final boolean isReader;
         private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-        public LoggingThread(Runnable target, int index) {
+        public LoggingThread(Runnable target, int index, boolean isReader) {
             super(target);
             this.index = index;
+            this.isReader = isReader;
         }
   
         @Override  
         public void run() {
-            scheduler.scheduleAtFixedRate(() -> logState(String.format("Thread %d state",index)), 0, 5, TimeUnit.MILLISECONDS);
+            if(!isReader)
+                scheduler.scheduleAtFixedRate(() -> {
+                    logState(String.format("Thread %d state",index));
+                }, 0, 10, TimeUnit.MILLISECONDS);
+//            else
+//                scheduler.scheduleAtFixedRate(() -> logState(String.format("Thread %d state",index)), 0, 5, TimeUnit.MILLISECONDS);
             try {
                 super.run();
             } finally {
                 logState(String.format("Thread %d finished", index));
-                scheduler.shutdown();
+                //scheduler.shutdown();
             }
         }  
   
         private void logState(String message) {  
-            logger.log(Level.INFO, "{0}: {1}", new Object[]{message, this.getState()});  
+            logger.log(Level.INFO, "{0}: {1}", new Object[]{message, this.getState()});
+            if(this.getState() == Thread.State.TERMINATED){
+                System.out.println("terminated");
+                scheduler.shutdown();
+            }
         }  
     }
 }  
