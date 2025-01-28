@@ -1,2 +1,2 @@
 # PRIR
- Repozytorium Rozwiązania PRIR UJ 2024/2025
+ Repozytorium Rozwiązania PRIR UJ FAIS 2024/2025
