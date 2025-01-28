@@ -36,3 +36,5 @@
 zadanie1/CMakeLists.txt
 /MPI_samples
 /zadanie1/testy
+/cmake-build-debug
+/.idea
